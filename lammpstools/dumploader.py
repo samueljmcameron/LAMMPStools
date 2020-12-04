@@ -195,6 +195,84 @@ class DumpLoader(BaseClass):
 
         return data
 
+    def clustering(self,snapshot,clusterlabel):
+        """ Store sorted cluster information into snapshot dictionary.
+
+        Creates five new keys in snapshot dict:
+
+        'cluster_sizes' value is a dict with keys labeling the
+        cluster number and values counting number of atoms in the
+        cluster.
+
+        'N_clusters' value is an integer (number of unique clusters).
+
+        'lammps2sorted_id' value is a dictionary, keys are labels of
+        original cluster label (as outputted by dump), and values are
+        labels of sorted ordering of cluster sizes (i.e. going from
+        0 to N_clusters -1).
+
+        'sorted2lammps_id' value is similar to 'lammps2sorted_id'
+        above, except keys and values are switched.
+
+        'new_c_c1' is the labels of cluster sizes, maintaining
+        the same order as 'c_c1', except that the cluster labels
+        have been changed such that the labels of atoms from the
+        largest cluster in 'c_c1' (which are completely random)
+        are represented as 0s in 'new_c_c1', and the labels of
+        atoms from the smallest cluster in 'c_c1' will be labelled
+        as N_clusters-1.
+        e.g. if snapshot['c_c1'] = [1,2,3,4,4,4,5,1,6], then
+        snapshot['new_c_c1'] = [1,2,3,0,0,0,5,6]. Note that
+        ordering is random for those clusters with the same
+        number of atoms, so the above is equivalent to
+        snapshot['new_c_c1'] = [1,6,5,0,0,0,2,3], since there
+        are four atoms which are of cluster size one.
+
+        """
+        
+        cluster_sizes = self.__count_items(snapshot[clusterlabel])
+        snapshot['cluster_sizes'] = cluster_sizes
+
+        snapshot['N_clusters'] = len(cluster_sizes)
+        
+        # compute list of cluster LABELS, going from largest 
+        # cluster to smallest cluster. Note this is NOT a list
+        # of cluster sizes.
+        sorted_key = sorted(cluster_sizes, key=cluster_sizes.get,
+                            reverse=True)
+
+        lammps2sorted_id = { key:c_id  for c_id, key
+                             in enumerate(sorted_key)   }
+        sorted2lammps_id = { c_id:key  for c_id, key
+                             in enumerate(sorted_key)   }
+        snapshot['lammps2sorted_id'] = lammps2sorted_id
+        snapshot['sorted2lammps_id'] = sorted2lammps_id
+        snapshot['new_c_c1'] = [lammps2sorted_id[lmp_id]
+                                for lmp_id in snapshot[clusterlabel]]
+
+        return
+
+    def __count_items(self,lst):
+        """ Count number of times a label occurs in a list.
+
+        Input lst is the list with labels. 
+
+        Returns a dictionary, with keys being all unique items from
+        lst and values being the count of how many times those items
+        occur in  lst.
+
+        An example form of this list from a dump file would be the
+        cluster (c_c1) row. If the dump entry had 4 atoms, and the
+        first and third were in the same cluster, lst = [1,2,1,3]
+        and this function would return {'1' : 2, '2' : 1, '3' : 1}.
+
+        """
+        
+        my_count = {}
+        for val in lst:
+            my_count[val] = (my_count.get(val, 0)) + 1
+        return my_count
+
     
 
 if __name__ == "__main__":
