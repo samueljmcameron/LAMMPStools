@@ -80,7 +80,7 @@ class LogLoader(object):
         fname : string
             The name of the log file.
         chunk_start : string (optional)
-            A string which signifies the start of a thermodynamic data
+             A string which signifies the start of a thermodynamic data
             chunk within the log file. Almost always this will be 'Step'.
         chunk_end : string (optional)
             A string which signifies the end of a thermodynamic data
@@ -160,12 +160,16 @@ class LogLoader(object):
         dataset : dict
             Dictionary of thermodynamic data.
         """
-        
-        dataset = dict(self.data[0])
+
+        # shallow copy of dict is okay since data[0] does not
+        # contain nested dicts
+        dataset = self.data[0].copy()
         
         for j,ddict in enumerate(self.data[1:]):
             
             for key,value in ddict.items():
+                if key == 'header':
+                    continue
                 try:
                     val = dataset[key]
                 except KeyError:
@@ -178,15 +182,23 @@ class LogLoader(object):
                                                ddict[key]))
 
         if remove_duplicates:
+            # copy all steps, which are now in a single array
             steps = np.copy(dataset['Step'])
-            
-            dmask = steps[1:]-steps[:-1]
-            dmask = np.array(np.concatenate(([True],dmask)),bool)
 
-            for key in dataset:
-                dataset[key] = dataset[key][dmask]
+            # steps[1:]-steps[:-1] will give an array of ints,
+            # and any ints which are zero signal a non-unique
+            # step. The line below then screens out duplicates
+            # (the first member of the duplicate is removed)
             
-            assert (dataset['Step'] == np.unique(steps)).all()
+            dmask = np.array(np.concatenate(([True],
+                                             steps[1:]-steps[:-1])),
+                             bool)
+            # overwrite the values for each key
+            for key in dataset:
+                if key == 'header':
+                    continue
+                
+                dataset[key] = dataset[key][dmask]
 
             
         return dataset
@@ -204,6 +216,8 @@ class LogLoader(object):
             thermodynamic data (the keys of each dictionary correspond
             to the names of the different thermodynamic observables,
             the values are arrays with the actual data).
+            Note that you can figure out what quantities
+            are in the dictionary by checking data[i]['header']
              
         """
 
@@ -218,13 +232,16 @@ class LogLoader(object):
             d_lines = np.array(lines)[master_masks[j]]
             
             dt = np.array([d.split() for d in d_lines])
-
+            header = []
             for key,value in chunk.items():
 
                 if key == 'Step':
                     chunk[key] = np.array(dt[:,value],int)
                 else:
                     chunk[key] = np.array(dt[:,value],float)
+                header.append(key)
+            chunk['header'] = header
+
             data.append(chunk)
                                     
         return data
@@ -253,9 +270,41 @@ class LogLoader(object):
 
     def __chunk_lines(self,lines):
         """
-        Build an array mask which is true for all data lines
-        (i.e. lines with thermo output) and false for all
-        other lines.
+        Construct a list of array masks, where each mask includes only
+        data for one thermodynamic chunk. Also construct a list of header
+        names (one for each chunk).
+
+        Parameters
+        ----------
+        lines : list of strings
+            List of all lines in the log file. 
+
+        Returns
+        -------
+        master_masks : list of arrays
+            List of N arrays, where N is the number of thermo runs
+            in the log file. Each array in this list has length
+            len(lines). The ith component of each array corresponds
+            to the ith line of the log file. Each of these components
+            is either True (if line i is in the chunk of interest,
+            and contains thermodynamic data) or False (otherwise).
+            For example, if the log file contains three thermo runs
+            (aka chunks) of data, then len(master_masks) = 3. If
+            the first chunk has thermo data at 10 timepoints, starting
+            at line x, then master_masks[0][x:x+10]=True and all other
+            components of master_masks[0] will be False. If the other
+            two chunks have thermo data at 20 timepoints, and start at
+            lines y and z, respectively, then
+            master_masks[1][y:y+20]=True and master_masks[1][z:z+20]=True,
+            respectively, with all all other components of master_masks[1] 
+            and master_masks[2] being False.
+            
+        header_list : list of dicts
+            Each dict in header_list contains keys which correspond to
+            the quantities measured in the current thermo run (aka chunk).
+            The value corresponding to each key is the column that the
+            key is stored at in the log file.
+
 
         """
         
@@ -349,12 +398,13 @@ class LogLoader(object):
 
 if __name__=='__main__':
 
-
-    prefix = './'
     
-    fname = 'log_100_0.5_3.0_1.lammps.log'
+    fname = 'test_data/log_dummy.lammps.log'
 
     ll = LogLoader(fname)
 
-    print(ll.remove_chunks.__doc__)
-    print(ll.merge_chunks.__doc__)
+    ll.remove_chunks(0)
+
+    merge_data = ll.merge_chunks()
+
+    print(merge_data)
