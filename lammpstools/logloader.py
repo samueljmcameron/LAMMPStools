@@ -176,7 +176,7 @@ class LogLoader(object):
 
                     raise Exception('Unable to merge thermo chunks: '
                                     f'{key} variable in thermo '
-                                    'chunk {j} is not measured in '
+                                    f'chunk {j} is not measured in '
                                     'the previous thermo chunk.')
                 dataset[key] = np.concatenate((val,
                                                ddict[key]))
