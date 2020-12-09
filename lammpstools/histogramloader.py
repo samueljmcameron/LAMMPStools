@@ -61,7 +61,7 @@ class HistogramLoader(BaseClass):
 
     """
 
-    def __init__(self,filename,skiplines=2,min_step=0,
+    def __init__(self,fname,skiplines=2,min_step=0,
                  max_step=1e10,pstatus=False,
                  integerquantities=['Row']):
         """
@@ -69,7 +69,7 @@ class HistogramLoader(BaseClass):
 
         Parameters
         ----------
-        filename : string
+        fname : string
             Name of the dump histogram to load data from.
         skiplines : int (optional)
             Number of lines to skip in the file before the header file (e.g.
@@ -94,7 +94,7 @@ class HistogramLoader(BaseClass):
         Does not return anything, but loads in data.
         """
         
-        self.filename = filename
+        self.fname = fname
         self.min_step = min_step
         self.max_step = max_step
         
@@ -120,12 +120,12 @@ class HistogramLoader(BaseClass):
     
     def __read_histograms(self,skiplines):
         """
-        Read data from histogram file self.filename and return a list of
+        Read data from histogram file self.fname and return a list of
         dictionaries with each list item corresponding to a timestep
         of the histogram file.
 
         Example: If you have a simulation with k atoms, and the (per-atom)
-        info is dumped into filename n times total, then this function
+        info is dumped into fname n times total, then this function
         returns a list with n items in it. Each item is a dictionary,
         where the 'key' is the name of the measured quantity (e.g.
         'c_rdf[1]' would be the radial distance in the radial
@@ -162,7 +162,7 @@ class HistogramLoader(BaseClass):
         cnt = 0
 
 
-        with open(self.filename,'r') as f:
+        with open(self.fname,'r') as f:
             
             count = 0
             
@@ -176,7 +176,7 @@ class HistogramLoader(BaseClass):
             while True:
                 
                 snapshot = {} # store binned data at current timestep
-                snapshot['traj'] = self.filename
+                snapshot['traj'] = self.fname
                 
                 line = f.readline().strip('\n')
                 if not line:
@@ -212,17 +212,17 @@ class HistogramLoader(BaseClass):
                     for j in range(n):
                         
                         x[ int(line[0])-1, j] = float(line[j])
-                        self._set_snap_atom_vals(header,x,snapshot,
-                                                 self.integerquantities)
+                self._set_snap_atom_vals(header,x,snapshot,
+                                         self.integerquantities)
                 data.append(snapshot.copy())
         return data
             
 
 if __name__ == "__main__":
     
-    fname = 'test_data/rdf_dummy.rdf'
+    fname = 'test_data/histograms_vsfp_0.001_0.0_1.0_3.0_1.rdf'
     
-    rdf = HistogramLoader(fname,max_step=200)
+    rdf = HistogramLoader(fname,pstatus=True)
 
     avdata, stddata = rdf.averages()
 
