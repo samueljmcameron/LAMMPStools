@@ -22,28 +22,41 @@ class CondensedArray_oThree():
     Methods
     -------
 
-    flat_length(self):
+    flat_length(self)
 
-        expected length of the condensed array
+        Compute the expected length of the condensed array
+        given the attributes of the class.
 
-    def flat_index(self,ubin,vbin,abin):
-        v_r =  vbin-self.nskip
+    flat_index(self,ubin,vbin,abin)
 
-        u_r = ubin-self.nskip
-        N0 = self.Nuv-2*self.nskip+1
+        Compute the flattened index of the condensed array,
+        given the indices of the original array, i.e. a one-way
+        map from original[abin,vbin,ubin] to
+        condensed[flat_index(ubin,vbin,abin)].
+
+
         
-        return abin+ (v_r + u_r*N0 - (u_r*(u_r+1))//2)*self.Na
+    flat_extend(self,ubin,vbin,abin)
 
-        
-    def flat_extend(self,ubin,vbin,abin):
-        
-        return abin + (vbin + ubin*self.Nuv)*self.Na
+        Compute the flattened index of the original
+        (uncondensed) array, given the indices of this array.
 
 
+    extend(self,flat_array,ncols=1,filler=np.nan)
 
-    def extend(self,flat_array,ncols=1,filler=np.nan):
+        Extend the condensed, flattened array to the
+        uncondensed, flattened array, filling in the
+        missing values with a specified value (the
+        filler parameter).
+
 
     reshape(self,flat_array,ncols=1,filler=np.nan)    
+
+        Reshape the condensed, flattened array to 
+        uncondensed, full order two arrays, filling in the
+        missing values with a specified value (the
+        filler parameter).
+
     """
 
     def __init__(self,Nuv,Na,nskip):
@@ -324,11 +337,51 @@ class CondensedArray_oThree():
 class CondensedArray_oTwo(CondensedArray_oThree):
 
     """
-    Given an array type data which has been flattened and
-    compressed from shape (N1,N1) to shape
-    (N1-2*nskip)*(N1-2*nskip+1)//2, get it back to its
-    original shape while putting some filler (to be specified)
-    where the values were originally removed.
+
+    Methods to manipulate an array type data which has been
+    flattened and compressed from shape (Nuv,Nuv) to a 1D
+    array of length (Nuv-2*nskip)*(Nuv-2*nskip+1)//2.
+
+    Attributes
+    ----------
+    Nuv : int
+        Length of two axes of original array.
+    nskip : int
+        Number of leading entries which were skipped
+        in the two axes of original array.
+
+
+    Methods
+    -------
+
+    flat_index(self,ubin,vbin)
+
+        Compute the flattened index of the condensed array,
+        given the indices of the original array, i.e. a one-way
+        map from original[vbin,ubin] to
+        condensed[flat_index(ubin,vbin)].
+
+    flat_extend(self,ubin,vbin)
+
+        Compute the flattened index of the original
+        (uncondensed) array, given the indices of this array.
+
+    extend(self,flat_array,filler=np.nan)
+
+        Extend the condensed, flattened array to the
+        uncondensed, flattened array, filling in the
+        missing values with a specified value (the
+        filler parameter).
+
+    reshape(self,flat_array,filler=np.nan)
+
+        Reshape the condensed, flattened array to 
+        uncondensed, full order two arrays, filling in the
+        missing values with a specified value (the
+        filler parameter).
+
+    as well as functions inherited from parent class
+    CondensedArray_oThree.
     
     """
 
