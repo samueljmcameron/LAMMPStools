@@ -45,7 +45,8 @@ class DumpLoader(BaseClass):
 
     Private Methods
     ---------------
-    __init__(self,filename,min_step=0,max_step=1e10,pstatus)
+    __init__(self,filename,integerquantities=['id','type'],
+             min_step=0,max_step=1e10,pstatus=False)
 
         initialise attributes, BaseClass, and store data
 
