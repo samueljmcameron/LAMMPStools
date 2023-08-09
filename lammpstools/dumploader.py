@@ -195,11 +195,10 @@ class DumpLoader(BaseClass):
                         for i in range(N):
                             line = f.readline().strip('\n').split()
                             for j in range(len(header)):
-                                x[ int(line[idlocation])-lowestid, j] = float(line[j])
+                                x[ int(line[self.idlocation])-self.lowestid, j] = float(line[j])
                                 
                         self._set_snap_atom_vals(header,x,snapshot,
-                                                 self.integerquantities,lowestid,
-                                                 idlocation)
+                                                 self.integerquantities)
 
                         if (read_flag): data.append(snapshot.copy())
                         snapshot = {}
