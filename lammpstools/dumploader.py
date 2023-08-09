@@ -99,6 +99,8 @@ class DumpLoader(BaseClass):
         self.integerquantities = integerquantities
         self.min_step = min_step
         self.max_step = max_step
+        self.lowestid = lowestid
+        self.idlocation = idlocation
 
         if (self.max_step<self.min_step) :
             raise Exception('Max_step is smaller than min_step.')
