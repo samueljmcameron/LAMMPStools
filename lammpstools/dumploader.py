@@ -46,7 +46,8 @@ class DumpLoader(BaseClass):
     Private Methods
     ---------------
     __init__(self,filename,integerquantities=['id','type'],
-             min_step=0,max_step=1e10,pstatus=False)
+             min_step=0,max_step=1e10,pstatus=False,
+             lowestid=1,idlocation=0)
 
         initialise attributes, BaseClass, and store data
 
@@ -58,7 +59,8 @@ class DumpLoader(BaseClass):
     """
 
     def __init__(self,filename,integerquantities=['id','type'],
-                 min_step=0, max_step=1e10,pstatus=False):
+                 min_step=0, max_step=1e10,pstatus=False,
+                 lowestid=1,idlocation=0):
 
         """
         Initialise class attributes and load data.
@@ -80,6 +82,12 @@ class DumpLoader(BaseClass):
         pstatus : bool (optional)
             Print where the function is at in terms of how much data it has
             stored (kind of like a verbose option).
+        lowestid : int (optional)
+            Lowest id that an atom can have. Default is 1.
+        idlocation: int >= 0 (optional)
+            In the header list of the dump file, the location of the keyword that labels
+            the atoms ('id'). Default is zero, meaning the first word in the header is 'id'
+            or similar.
 
         Returns
         -------
@@ -185,10 +193,11 @@ class DumpLoader(BaseClass):
                         for i in range(N):
                             line = f.readline().strip('\n').split()
                             for j in range(len(header)):
-                                x[ int(line[0])-1, j] = float(line[j])
+                                x[ int(line[idlocation])-lowestid, j] = float(line[j])
                                 
                         self._set_snap_atom_vals(header,x,snapshot,
-                                                 self.integerquantities)
+                                                 self.integerquantities,lowestid,
+                                                 idlocation)
 
                         if (read_flag): data.append(snapshot.copy())
                         snapshot = {}
