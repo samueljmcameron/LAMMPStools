@@ -3,8 +3,8 @@ import numpy as np
 
 def PvdToDump(inputpvdname,outputdumpname,boxbounds,vtkscalars=['id','type'],
               vtkvectors={'x':('x','y','z'),'F':('Fx','Fy','Fz'),'ux':('ux','uy','uz')},
-              integerquantities=['id','type'],dt=None,headerorder = None,
-              vtpprefix=None):
+              integerquantities=['id','type'],headerorder = None,
+              processor=None):
 
 
     """
@@ -13,6 +13,7 @@ def PvdToDump(inputpvdname,outputdumpname,boxbounds,vtkscalars=['id','type'],
     with either:
         a) .vtp files with filename style f'somefilename_{timestep}.vtp'
         b) .pvtp files with filename style f'somefilename_{timestep}.pvtp'
+           that point to vtp files with a certain processor (to be specified below).
     Furthermore, the vtp or pvtp files must be in the same directory as the pvd file.
     If the pvd file references .pvtp files, then see vtpprefix argument below.
     
@@ -34,16 +35,12 @@ def PvdToDump(inputpvdname,outputdumpname,boxbounds,vtkscalars=['id','type'],
     integerquantities : list of strings (optional)
         Any vtkscalars or values in the vtkvectors dict that are to be treated as integers.
         Default is ['id','type']
-    dt : float or None
-        If not None, use pvd file 'timestep' information to determine timesteps. If None,
-        assume that the series of vtp files ends with the form f"_{timestep}.vtp".
     headerorder : list of strings
         Strings representing the order in which the per atom data will be written.
-    vtpprefix : string or None
-        If not None, then use this string to find '.vtp' files 
-        instead. This assumes .vtp files of the form f'{vtpprefix}_{timestep}.vtp' (without
-        any directory prefix needed as the .vtp files should be in the same folder as the
-        pvd file).
+    processor : int
+        If .pvtp files in the .pvd file, then need to extract a file of the .vtp format.
+        This must be set if .pvtp file is found to specify which processor to extract
+        data from.
 
     Returns
     -------
@@ -63,14 +60,16 @@ def PvdToDump(inputpvdname,outputdumpname,boxbounds,vtkscalars=['id','type'],
 
                 substr = line[line.find("file=\"")+6:]
                 vtkfname = folder + substr[:substr.find("\"")]
-                
-                if dt != None:
-                    tstep = round(time/dt)
-                else:
-                    tstep = int(vtkfname[vtkfname.rfind("_")+1:vtkfname.find(".")])
 
-                if vtpprefix != None:
-                    vtkfname = folder + f"{vtpprefix}_{tstep}.vtp"
+                if vtkfname.rfind(".vtp") == -1 and vtkfname.rfind(".pvtp") == -1:
+                    raise ValueError("Incorrect formatting in pvd file.")
+
+                tstep = int(vtkfname[vtkfname.rfind("_")+1:vtkfname.rfind(".")])
+
+                if vtkfname.rfind(".pvtp") != -1:
+                    if processor == None:
+                        raise ValueError("Need to set processor value if .pvtp file in .pvd")
+                    vtkfname = vtkfname[:vtkfname.rfind("_")]+f"_p{processor}_{tstep}.vtp"
 
                 vtkToDump(vtkfname,dumpfile,tstep,boxbounds,vtkscalars=vtkscalars,
                           vtkvectors=vtkvectors,integerquantities=integerquantities,
