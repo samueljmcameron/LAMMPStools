@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="lammpstools",
-    version="0.0.11",
+    version="0.0.12",
     author="Sam Cameron",
     author_email="samuel.j.m.cameron@gmail.com",
     description="package to analyse LAMMPS data",

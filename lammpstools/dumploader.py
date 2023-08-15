@@ -25,7 +25,7 @@ class DumpLoader(BaseClass):
         all data from the ith timestep of the dump file
         stored.
     integerquantities : list of strings
-        names of all quantites that should be stored as integers
+        names of all quantities that should be stored as integers
         instead of floats. Default is ['id','type'].
     min_step : int (optional)
         Any timesteps in the dump file which are less than min_step are
