@@ -60,68 +60,12 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
             break
         if (datastep['step'] < stepmin):
             continue
+        timestep,fname = DictToVTK(datastep,fileout,integerquantities=integerquantities,
+                                   vtkscalars=vtkscalars,vtkvectors=vtkvectors)
 
         numpoints = datastep['N']
-        timesteps.append(datastep['step'])
-        fnames.append(fileout + "_" + str(timesteps[-1]) + ".vtp")
-        fname = fnames[-1]
-
-        header = "<?xml version=\"1.0\"?>\n"
-        header += "<VTKFile type=\"PolyData\"  version=\"1.0\" byte_order=\"LittleEndian\">\n"
-        header += "<PolyData>\n"
-        header += "<Piece NumberOfPoints=\"" + str(numpoints)
-        header += "\" NumberOfLines=\"1\">\n"
-        
-        with open(fname,"w") as fout:
-            fout.write(header)
-            fout.write("<Points>\n")
-            xs = datastep['x']
-            ys = datastep['y']
-            zs = datastep['z']
-            positions = np.vstack((xs,ys,zs)).transpose()
-            fout.write("<DataArray Name=\"x\" type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n") 
-            np.savetxt(fout,positions.flatten(),newline=' ',fmt='%f')
-            fout.write("\n</DataArray>\n")
-            fout.write("</Points>\n")
-            fout.write("<PointData>\n")
-
-
-            for vname,tup in vtkvectors.items():
-                
-                vec = ()
-                item_type = "Float64"
-                for key in tup:
-                    vec = (*vec,datastep[key])
-                    if key in integerquantities:
-                        item_type = "Int64"
-                
-                vec = np.vstack(vec).transpose()
-                fout.write(f"<DataArray Name=\"{vname}\" type=\"{item_type}\" NumberOfComponents=\"{len(tup)}\" format=\"ascii\">\n")
-                if item_type == "Int64":
-                    fmt = '%d'
-                else:
-                    fmt = '%f'
-                np.savetxt(fout,vec.flatten(),newline=' ',fmt=fmt)
-                fout.write("\n</DataArray>\n")
-
-
-            for key in vtkscalars:
-                item_type = "Float64"
-                if key in integerquantities:
-                    item_type = "Int64"
-                scal = datastep[key]
-                if item_type == "Int64":
-                    fmt = '%d'
-                else:
-                    fmt = '%f'                
-                fout.write(f"<DataArray Name=\"{key}\" type=\"{item_type}\" NumberOfComponents=\"1\" format=\"ascii\">\n")
-                np.savetxt(fout,scal,newline=' ',fmt=fmt)
-                fout.write("\n</DataArray>\n")
-
-
-            fout.write("</PointData>\n</Piece>\n</PolyData>\n</VTKFile>")
-
-
+        timesteps.append(timestep)
+        fnames.append(fname)
 
     header = "<?xml version=\"1.0\"?>\n<VTKFile type=\"Collection\"  version=\"1.0\""
     header += " byte_order=\"LittleEndian\">\n<Collection>\n"
@@ -145,3 +89,99 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
 
 
     return;
+
+
+
+def DictToVTK(datastep,fileout,integerquantities=['id','type'],
+              vtkscalars=['id','type'],
+              vtkvectors={'F':('Fx','Fy','Fz'),'ux':('ux','uy','uz')}):
+    """
+    Function to convert dump file from lammps output to a series of vtkfiles
+    and a collection to track the timesteps. 
+
+    Parameters
+    ----------
+    datastep : dict
+        Lammps dump type object, which must contain the keys 'N', 'step',
+        'x', 'y', and 'z'
+    fileout : string
+        Desired names of the vtkoutput file, without any suffix (e.g. exclude .vtp)
+    integerquantities : list of strings
+        Names of all quantities that should be stored as integers
+        instead of floats. Default is ['id','type'].
+    vtkscalars : list of strings
+        Names of all scalar quantities to be saved to vtk files.
+        Default is ['id','type'].
+    vtkvectors: dictionary with strings for keys and tuple of strings for values
+        Names of all vector quantities to be saved to vtk files (keys)
+        and a tuple of the names of the components of these 
+        quantities to be found in the dump file. Default is
+        {'F' : ('Fx','Fy','Fz'), 'ux' : ('ux','uy','uz')}
+
+    Returns
+    -------
+    fname : str
+        fileout + datastep['step'] + '.vtp'
+    """
+
+    numpoints = datastep['N']
+    timestep = datastep['step']
+
+    fname = fileout + "_" + str(timestep) + ".vtp"
+
+    header = "<?xml version=\"1.0\"?>\n"
+    header += "<VTKFile type=\"PolyData\"  version=\"1.0\" byte_order=\"LittleEndian\">\n"
+    header += "<PolyData>\n"
+    header += "<Piece NumberOfPoints=\"" + str(numpoints)
+    header += "\" NumberOfLines=\"1\">\n"
+
+    with open(fname,"w") as fout:
+        fout.write(header)
+        fout.write("<Points>\n")
+        xs = datastep['x']
+        ys = datastep['y']
+        zs = datastep['z']
+        positions = np.vstack((xs,ys,zs)).transpose()
+        fout.write("<DataArray Name=\"x\" type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n") 
+        np.savetxt(fout,positions.flatten(),newline=' ',fmt='%f')
+        fout.write("\n</DataArray>\n")
+        fout.write("</Points>\n")
+        fout.write("<PointData>\n")
+
+
+        for vname,tup in vtkvectors.items():
+
+            vec = ()
+            item_type = "Float64"
+            for key in tup:
+                vec = (*vec,datastep[key])
+                if key in integerquantities:
+                    item_type = "Int64"
+
+            vec = np.vstack(vec).transpose()
+            fout.write(f"<DataArray Name=\"{vname}\" type=\"{item_type}\" NumberOfComponents=\"{len(tup)}\" format=\"ascii\">\n")
+            if item_type == "Int64":
+                fmt = '%d'
+            else:
+                fmt = '%f'
+            np.savetxt(fout,vec.flatten(),newline=' ',fmt=fmt)
+            fout.write("\n</DataArray>\n")
+
+
+        for key in vtkscalars:
+            item_type = "Float64"
+            if key in integerquantities:
+                item_type = "Int64"
+            scal = datastep[key]
+            if item_type == "Int64":
+                fmt = '%d'
+            else:
+                fmt = '%f'                
+            fout.write(f"<DataArray Name=\"{key}\" type=\"{item_type}\" NumberOfComponents=\"1\" format=\"ascii\">\n")
+            np.savetxt(fout,scal,newline=' ',fmt=fmt)
+            fout.write("\n</DataArray>\n")
+
+
+        fout.write("</PointData>\n</Piece>\n</PolyData>\n</VTKFile>")
+
+    return fname
