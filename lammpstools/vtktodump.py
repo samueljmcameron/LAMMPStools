@@ -4,7 +4,7 @@ import numpy as np
 def PvdToDump(inputpvdname,outputdumpname,boxbounds,vtkscalars=['id','type'],
               vtkvectors={'x':('x','y','z'),'F':('Fx','Fy','Fz'),'ux':('ux','uy','uz')},
               integerquantities=['id','type'],headerorder = None,
-              processor=None):
+              processor=None,early_start=None):
 
 
     """
@@ -35,13 +35,16 @@ def PvdToDump(inputpvdname,outputdumpname,boxbounds,vtkscalars=['id','type'],
     integerquantities : list of strings (optional)
         Any vtkscalars or values in the vtkvectors dict that are to be treated as integers.
         Default is ['id','type']
-    headerorder : list of strings
+    headerorder : list of strings (optional)
         Strings representing the order in which the per atom data will be written.
-    processor : int
+    processor : int (optional)
         If .pvtp files in the .pvd file, then need to extract a file of the .vtp format.
         This must be set if .pvtp file is found to specify which processor to extract
         data from.
-
+    early_start : tuple (optional)
+        Force the data to start at a timestep previous to what is in the .pvd file, with interval
+        specified, so early_start = (timestep,interval)
+    
     Returns
     -------
     Nothing, just writes a dump file.
@@ -49,6 +52,8 @@ def PvdToDump(inputpvdname,outputdumpname,boxbounds,vtkscalars=['id','type'],
 
     # determine if pvd and vtp files are in a different directory
     folder = inputpvdname[:inputpvdname.rfind("/")+1]
+
+    started_early = False
     
     with open(inputpvdname,"r") as pvdfile:
         with open(outputdumpname,"w") as dumpfile:    
@@ -66,11 +71,31 @@ def PvdToDump(inputpvdname,outputdumpname,boxbounds,vtkscalars=['id','type'],
 
                 tstep = int(vtkfname[vtkfname.rfind("_")+1:vtkfname.rfind(".")])
 
+                
+                
                 if vtkfname.rfind(".pvtp") != -1:
                     if processor == None:
                         raise ValueError("Need to set processor value if .pvtp file in .pvd")
                     vtkfname = vtkfname[:vtkfname.rfind("_")]+f"_p{processor}_{tstep}.vtp"
 
+
+                if early_start != None and not started_early:
+                    started_early = True
+                    startstep,interval = early_start
+
+                    if (tstep - startstep) % interval != 0:
+                        raise ValueError("Incompatible early_start values.")
+                    
+
+                    for step in range(startstep,tstep,interval):
+                        earlyvtkfname = vtkfname[:vtkfname.rfind("_")]+f"_{step}.vtp"
+
+                        vtkToDump(earlyvtkfname,dumpfile,step,boxbounds,vtkscalars=vtkscalars,
+                                  vtkvectors=vtkvectors,integerquantities=integerquantities,
+                                  headerorder=headerorder)
+
+
+                        
                 vtkToDump(vtkfname,dumpfile,tstep,boxbounds,vtkscalars=vtkscalars,
                           vtkvectors=vtkvectors,integerquantities=integerquantities,
                           headerorder=headerorder)
@@ -110,7 +135,6 @@ def vtkToDump(vtkfname,dumpfile,timestep,boxbounds,vtkscalars=['id','type'],
     
     """
 
-    print(f"Writing timestep {timestep} to dump file.")
     data,natoms = vtkToDict(vtkfname,vtkscalars=vtkscalars,
                             vtkvectors=vtkvectors,
                             integerquantities=integerquantities)

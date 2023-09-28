@@ -7,7 +7,7 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
               dt=1e-5,integerquantities=['id','type'],
               vtkscalars=['id','type'],
               vtkvectors={'F':('Fx','Fy','Fz'),'ux':('ux','uy','uz')},
-              lowestid=0,idlocation=0):
+              lowestid=0,idlocation=0,dimensions=3):
     """
     Function to convert dump file from lammps output to a series of vtkfiles
     and a collection to track the timesteps. 
@@ -39,6 +39,8 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
         In the header list of the dump file, the location of the keyword that labels
         the atoms ('id'). Default is zero, meaning the first word in the header is 'id'
         or similar.
+    dimensions : int
+        Dimension of the space the points are living in. Default is 3.
 
     Returns
     -------
@@ -61,7 +63,8 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
         if (datastep['step'] < stepmin):
             continue
         timestep,fname = DictToVTK(datastep,fileout,integerquantities=integerquantities,
-                                   vtkscalars=vtkscalars,vtkvectors=vtkvectors)
+                                   vtkscalars=vtkscalars,vtkvectors=vtkvectors,
+                                   dimensions=dimensions)
 
         numpoints = datastep['N']
         timesteps.append(timestep)
@@ -94,7 +97,8 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
 
 def DictToVTK(datastep,fileout,integerquantities=['id','type'],
               vtkscalars=['id','type'],
-              vtkvectors={'F':('Fx','Fy','Fz'),'ux':('ux','uy','uz')}):
+              vtkvectors={'F':('Fx','Fy','Fz'),'ux':('ux','uy','uz')},
+              dimensions=3):
     """
     Function to convert dump file from lammps output to a series of vtkfiles
     and a collection to track the timesteps. 
@@ -117,6 +121,8 @@ def DictToVTK(datastep,fileout,integerquantities=['id','type'],
         and a tuple of the names of the components of these 
         quantities to be found in the dump file. Default is
         {'F' : ('Fx','Fy','Fz'), 'ux' : ('ux','uy','uz')}
+    dimensions : int
+        Dimension of the space the points are living in. Default is 3.
 
     Returns
     -------
@@ -124,6 +130,8 @@ def DictToVTK(datastep,fileout,integerquantities=['id','type'],
         fileout + datastep['step'] + '.vtp'
     """
 
+    if dimensions != 2 and dimensions != 3:
+        raise ValueError("dimensions = 2 or dimensions = 3 required!")
     numpoints = datastep['N']
     timestep = datastep['step']
 
@@ -140,9 +148,13 @@ def DictToVTK(datastep,fileout,integerquantities=['id','type'],
         fout.write("<Points>\n")
         xs = datastep['x']
         ys = datastep['y']
-        zs = datastep['z']
+        if (dimensions== 3):
+            zs = datastep['z']
+        else:
+            zs = np.copy(xs)*0
+            
         positions = np.vstack((xs,ys,zs)).transpose()
-        fout.write("<DataArray Name=\"x\" type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n") 
+        fout.write(f"<DataArray Name=\"x\" type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n") 
         np.savetxt(fout,positions.flatten(),newline=' ',fmt='%f')
         fout.write("\n</DataArray>\n")
         fout.write("</Points>\n")
@@ -153,13 +165,15 @@ def DictToVTK(datastep,fileout,integerquantities=['id','type'],
 
             vec = ()
             item_type = "Float64"
+
             for key in tup:
                 vec = (*vec,datastep[key])
                 if key in integerquantities:
                     item_type = "Int64"
-
+            if len(tup) < 3:
+                vec = (*vec,np.copy(xs)*0)
             vec = np.vstack(vec).transpose()
-            fout.write(f"<DataArray Name=\"{vname}\" type=\"{item_type}\" NumberOfComponents=\"{len(tup)}\" format=\"ascii\">\n")
+            fout.write(f"<DataArray Name=\"{vname}\" type=\"{item_type}\" NumberOfComponents=\"3\" format=\"ascii\">\n")
             if item_type == "Int64":
                 fmt = '%d'
             else:
@@ -184,4 +198,4 @@ def DictToVTK(datastep,fileout,integerquantities=['id','type'],
 
         fout.write("</PointData>\n</Piece>\n</PolyData>\n</VTKFile>")
 
-    return fname
+    return timestep,fname
