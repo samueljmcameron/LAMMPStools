@@ -7,7 +7,7 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
               dt=1e-5,integerquantities=['id','type'],
               vtkscalars=['id','type'],
               vtkvectors={'F':('Fx','Fy','Fz'),'ux':('ux','uy','uz')},
-              lowestid=0,idlocation=0,dimensions=3):
+              lowestid=1,idlocation=0,dimensions=3,sortoutput=False):
     """
     Function to convert dump file from lammps output to a series of vtkfiles
     and a collection to track the timesteps. 
@@ -39,6 +39,10 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
         In the header list of the dump file, the location of the keyword that labels
         the atoms ('id'). Default is zero, meaning the first word in the header is 'id'
         or similar.
+    sortoutput : bool (optional)
+        Sort the arrays by row idlocation (an 'id' row usually). Only
+        possible when one of the rows goes from lowestid..Natoms+lowestid
+        without skipping any integers. Default is False.
     dimensions : int
         Dimension of the space the points are living in. Default is 3.
 
@@ -51,7 +55,8 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
     if (stepmin > stepmax):
         raise ValueError("Cannot have minimum step larger than maximum step.")
     dump = DumpLoader(filein,integerquantities=integerquantities,lowestid=lowestid,
-                      idlocation=idlocation,min_step=stepmin,max_step=stepmax)
+                      idlocation=idlocation,min_step=stepmin,max_step=stepmax,
+                      sortoutput=sortoutput)
 
     timesteps=[]
     fnames=[]
@@ -98,7 +103,7 @@ def DumpToVTK(filein,fileout,stepmax = 10,stepmin=0,
 def DictToVTK(datastep,fileout,integerquantities=['id','type'],
               vtkscalars=['id','type'],
               vtkvectors={'F':('Fx','Fy','Fz'),'ux':('ux','uy','uz')},
-              dimensions=3):
+              vtktensors={},dimensions=3):
     """
     Function to convert dump file from lammps output to a series of vtkfiles
     and a collection to track the timesteps. 
@@ -129,6 +134,7 @@ def DictToVTK(datastep,fileout,integerquantities=['id','type'],
     fname : str
         fileout + datastep['step'] + '.vtp'
     """
+
 
     if dimensions != 2 and dimensions != 3:
         raise ValueError("dimensions = 2 or dimensions = 3 required!")
@@ -181,7 +187,28 @@ def DictToVTK(datastep,fileout,integerquantities=['id','type'],
             np.savetxt(fout,vec.flatten(),newline=' ',fmt=fmt)
             fout.write("\n</DataArray>\n")
 
+        for tname,tup in vtktensors.items():
+            vec = ()
+            item_type = "Float64"
 
+            for key in tup:
+                vec = (*vec,datastep[key])
+                if key in integerquantities:
+                    item_type = "Int64"
+            if len(tup) != 9:
+                raise ValueError("Only 3x3 symmetrical tensors supported in VTK!")
+
+            vec = np.vstack(vec).transpose()
+            fout.write(f"<DataArray Name=\"{tname}\" type=\"{item_type}\" NumberOfComponents=\"9\" format=\"ascii\">\n")
+            if item_type == "Int64":
+                fmt = '%d'
+            else:
+                fmt = '%f'
+
+            np.savetxt(fout,vec.flatten(),newline=' ',fmt=fmt)
+            fout.write("\n</DataArray>\n")
+
+            
         for key in vtkscalars:
             item_type = "Float64"
             if key in integerquantities:

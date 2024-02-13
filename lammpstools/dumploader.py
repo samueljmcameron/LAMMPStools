@@ -60,7 +60,7 @@ class DumpLoader(BaseClass):
 
     def __init__(self,filename,integerquantities=['id','type'],
                  min_step=0, max_step=1e10,pstatus=False,
-                 lowestid=1,idlocation=0):
+                 lowestid=1,idlocation=0,sortoutput=False):
 
         """
         Initialise class attributes and load data.
@@ -83,11 +83,17 @@ class DumpLoader(BaseClass):
             Print where the function is at in terms of how much data it has
             stored (kind of like a verbose option).
         lowestid : int (optional)
-            Lowest id that an atom can have. Default is 1.
+            Lowest id that an atom can have. Default is 1. Only used if
+            sortoutput = True.
         idlocation: int >= 0 (optional)
             In the header list of the dump file, the location of the keyword that labels
             the atoms ('id'). Default is zero, meaning the first word in the header is 'id'
-            or similar.
+            or similar. Only used if sortoutput = False.
+        sortoutput : bool (optional)
+            Sort the arrays by row idlocation (an 'id' row usually). Only
+            possible when one of the rows goes from lowestid..Natoms+lowestid
+            without skipping any integers. Default is False.
+
 
         Returns
         -------
@@ -101,6 +107,7 @@ class DumpLoader(BaseClass):
         self.max_step = max_step
         self.lowestid = lowestid
         self.idlocation = idlocation
+        self.sortoutput = sortoutput
 
         if (self.max_step<self.min_step) :
             raise Exception('Max_step is smaller than min_step.')
@@ -194,8 +201,13 @@ class DumpLoader(BaseClass):
 
                         for i in range(N):
                             line = f.readline().strip('\n').split()
-                            for j in range(len(header)):
-                                x[ int(line[self.idlocation])-self.lowestid, j] = float(line[j])
+                            if self.sortoutput:
+                                for j in range(len(header)):
+                                    x[ int(line[self.idlocation])-self.lowestid, j] = float(line[j])
+                            else:
+                                for j in range(len(header)):
+                                    x[ i, j] = float(line[j])
+
                                 
                         self._set_snap_atom_vals(header,x,snapshot,
                                                  self.integerquantities)
